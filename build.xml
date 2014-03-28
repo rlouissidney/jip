@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="JIP" default="compile" basedir=".">
+	
+	<target name="clean">
+		<delete dir="${basedir}/bin"/>
+		<delete dir="${basedir}/profile"/>
+		<delete dir="${basedir}/client"/>
+		<delete dir="${basedir}/tools"/>
+	</target>
+
+	<target name="compile" depends="clean">
+		<mkdir dir="${basedir}/bin"/>
+	    <javac srcdir="${basedir}/src"
+           destdir="${basedir}/bin"
+           optimize="on"
+	       includeantruntime="false"
+	       target="1.5">
+		   <compilerarg  value="-Xlint"/>
+		</javac>
+	</target>
+
+	<target name="javadoc">
+		<delete dir="${basedir}/doc/javadoc"/>
+		<mkdir dir="${basedir}/doc/javadoc"/>
+		<javadoc packagenames="com.mentorgen.*,com.tivo.*,org.objectweb.asm.jip.*"
+						sourcepath="${basedir}/src"
+						 destdir="${basedir}/doc/javadoc"
+						 classpath="bin"
+						 author="true"
+						 version="true"
+						 use="true"
+						 windowtitle="Java Interactive Profiler" >
+			<doctitle><![CDATA[<h1>Java Interactive Profiler</h1>]]></doctitle>
+		</javadoc>
+	</target>
+
+	<target name="dist" depends="compile,javadoc">
+		<mkdir  dir="${basedir}/profile"/>
+		<mkdir  dir="${basedir}/client"/>
+		<mkdir  dir="${basedir}/tools"/>
+
+		<jar jarfile="${basedir}/client/client.jar"
+			basedir="${basedir}/bin"
+			manifest="${basedir}/src/client-manifest"
+			includes="com/mentorgen/tools/util/**,com/mentorgen/tools/profile/remote/**"/>
+		
+		<jar jarfile="${basedir}/profile/profile.jar"
+			basedir="${basedir}/bin"
+			manifest="${basedir}/src/manifest"
+			includes="com/mentorgen/tools/profile/**,org/**"/>
+		
+		<copy file="${basedir}/src/com/tivo/jipviewer/help.html" todir="${basedir}/bin/com/tivo/jipviewer"/>
+		<jar jarfile="${basedir}/tools/jipViewer.jar"
+			basedir="${basedir}/bin"
+			manifest="${basedir}/src/viewer-manifest"
+			includes="com/tivo/**,com/mentorgen/tools/profile/remote/**"/>
+
+		<copy todir="${basedir}/profile">
+			<fileset dir="${basedir}/src/example-properties">
+			</fileset>
+		</copy>
+
+		<copy todir="${basedir}/client">
+			<fileset dir="${basedir}/src/client"/>
+		</copy>
+		
+		<copy file="${basedir}/src/jipViewer/jipViewer.sh" todir="${basedir}/tools"/>
+		<copy file="${basedir}/src/jipViewer/jipViewer.bat" todir="${basedir}/tools"/>
+	</target>
+</project>

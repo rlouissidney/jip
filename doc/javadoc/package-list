@@ -1,0 +1,11 @@
+com.mentorgen.tools.profile
+com.mentorgen.tools.profile.instrument
+com.mentorgen.tools.profile.instrument.classfilter
+com.mentorgen.tools.profile.output
+com.mentorgen.tools.profile.remote
+com.mentorgen.tools.profile.runtime
+com.mentorgen.tools.profile.timeline
+com.mentorgen.tools.util.profile
+com.tivo.jipviewer
+org.objectweb.asm.jip
+org.objectweb.asm.jip.commons

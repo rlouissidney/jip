@@ -1,0 +1,23 @@
+Timelines. This release features an alternative profiler engine that produces a 
+timeline rather than timings. 
+
+JIP now come with a GUI front end called jipViewer that can be used to view 
+JIP's output.
+
+Improved "net time" reporting. The time that a thread spends calling Object.wait, 
+Thread.sleep, Thread.join or Thread.yeild is not longer counted as part of a 
+method's net time.
+
+Updated the readme.html to include a FAQ.
+
+Added a new ClassLoaderFilter that allows you to specify which classloaders to 
+accept via configuration.
+
+Added the ability to explicity include classes by package or class name.
+
+Fixed a problem where caught exceptions were messing up the JIP call stack.
+
+Added a new optional property: output-method-signatures. Setting this to yes 
+causes JIP to include the signature of a method, in addition to its name and package, in the output. For compatability, the default value is no.
+
+Added support for JBoss 4.
