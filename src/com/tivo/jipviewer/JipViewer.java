@@ -75,7 +75,6 @@ Suggestions for jip runtime:
 
 package com.tivo.jipviewer;
 
-import java.awt.Container;
 import java.awt.Dimension;
 import java.awt.Rectangle;
 import java.awt.event.KeyEvent;
@@ -118,6 +117,8 @@ public class JipViewer extends JFrame
 	
 	private static int instanceNumero=0;
 	
+	private static boolean FIRST_HAS_DATA=true;
+	
 	private JTree  mCallTree;
     private JTable mMethods;
     private ByPackageViewer mPkgViewer;
@@ -149,7 +150,8 @@ public class JipViewer extends JFrame
         long msec = (long) Math.floor(toMsec(totalTimeForAllThreads));
         String title = "" + msec +" msec -- "+ filename; 
         if ("".equals(filename)) {
-           title = "No data";	
+           title = "Simple remote control";
+           FIRST_HAS_DATA=false;
         }
 
         new JipViewer(title, run);
@@ -179,8 +181,7 @@ public class JipViewer extends JFrame
         mCallTree.addKeyListener(this);
 
         // build the allMethods table
-        Collection<JipRun.PerMethodInfo> perMethodInfos =
-            run.perMethodsInTotalTimeOrder();
+        Collection<JipRun.PerMethodInfo> perMethodInfos = run.perMethodsInTotalTimeOrder();
         long totalTimeForAllThreads = run.getTotalTimeForAllThreads();
         for (JipRun.PerMethodInfo perMethod: perMethodInfos) {
             MethodRow row = new MethodRow(perMethod.getMethod());
@@ -212,38 +213,39 @@ public class JipViewer extends JFrame
           mRemoteController = new RemoteController();
           mRemoteController.addKeyListener(this);
         }
-
+       
         // make the methodViewer
         MethodViewer methodViewerMethods = new MethodViewer(run, mMethodModel);
         MethodViewer methodViewerCallTree = new MethodViewer(run, mMethodModel);
 
         // combine all the views
         JTabbedPane tabPane = new JTabbedPane();
-        JSplitPane splitPane = new JSplitPane(JSplitPane.VERTICAL_SPLIT,
+        if (instanceNumero!=0 || FIRST_HAS_DATA) {
+            JSplitPane splitPane = new JSplitPane(JSplitPane.VERTICAL_SPLIT,
                                               new JScrollPane(mCallTree),
                                               methodViewerCallTree);
-        splitPane.setLayout(new BoxLayout(splitPane, BoxLayout.Y_AXIS));
-        tabPane.addTab("call tree", splitPane);      
-        splitPane = new JSplitPane(JSplitPane.VERTICAL_SPLIT,
+            splitPane.setLayout(new BoxLayout(splitPane, BoxLayout.Y_AXIS));
+            tabPane.addTab("call tree", splitPane);      
+            splitPane = new JSplitPane(JSplitPane.VERTICAL_SPLIT,
                                    new JScrollPane(mMethods),
                                    methodViewerMethods);
-        splitPane.setLayout(new BoxLayout(splitPane, BoxLayout.Y_AXIS));
-        tabPane.addTab("methods", splitPane);
-        tabPane.addTab("by package", new JScrollPane(mPkgViewer));
-        tabPane.addTab("class allocation", mClassAllocationViewer);
-        if (instanceNumero==0) {
-          splitPane = new JSplitPane(JSplitPane.VERTICAL_SPLIT,
-                                     mRemoteController, 
-                                     new Container());
-          tabPane.addTab("remote control", splitPane );
+            splitPane.setLayout(new BoxLayout(splitPane, BoxLayout.Y_AXIS));
+            tabPane.addTab("methods", splitPane);
+            tabPane.addTab("by package", new JScrollPane(mPkgViewer));
+            tabPane.addTab("class allocation", mClassAllocationViewer);
         }
+        
+        if (instanceNumero==0) {
+        	tabPane.addTab("remote control", mRemoteController);	
+        }
+        
         tabPane.addTab("help", new HelpViewer());
         tabPane.addKeyListener(this);
         setContentPane(tabPane);
-
         pack();
         setSize(new Dimension(1024, 768));
         setVisible(true);
+        
         if (instanceNumero==0) {
         	setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE ); 
         } else {

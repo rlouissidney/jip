@@ -38,12 +38,14 @@ import java.io.IOException;
 
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
+import javax.swing.JComboBox;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
+import javax.swing.JScrollPane;
 import javax.swing.JSpinner;
+import javax.swing.JTextArea;
 import javax.swing.JTextField;
 import javax.swing.SpinnerNumberModel;
-
 import com.mentorgen.tools.profile.remote.Commands;
 import com.mentorgen.tools.profile.remote.DataSocket;
 
@@ -56,9 +58,18 @@ class RemoteController extends Container implements Commands, ActionListener {
 	JTextField mHostname;
     SpinnerNumberModel mPortModel;
     JTextField mState;
+    JButton    mButtonExecCommand;
+    JComboBox  mComboCommand;
+    JTextField mDataToSend;
+    JTextArea  mResultCommand;
     JButton    mButton;
     JButton    mButtonGetDump;
     JButton    mButtonStatus;
+    
+    private static String listOfcommand [] =
+    	{START,STOP,FILE,CLEAR,FINISH,STATUS, GETXMLDUMP,DEBUGON,DEBUGOFF,
+    	GETEXCLUDELIST,REPLACEEXCLUDELIST,GETINCLUDELIST,REPLACEINCLUDELIST,
+    	GETCLASSLOADERSBYNAME,REPLACECLASSLOADERSBYNAME};
 
     RemoteController() {
         mPortModel = new SpinnerNumberModel(15599, 0, 65355, 1);
@@ -69,7 +80,8 @@ class RemoteController extends Container implements Commands, ActionListener {
         mButtonStatus = makeButton("state");
         mButton   = makeButton("start/stop");
         mButtonGetDump = makeButton("data");
-
+        mButtonExecCommand = makeButton("exec");
+       
         Container pair = makePair(makeLabel("server hostname"), mHostname);
         add(pair);
         
@@ -81,7 +93,19 @@ class RemoteController extends Container implements Commands, ActionListener {
  
         Container three = makeThree(mButtonStatus,mButton, mButtonGetDump);
         add(three);
-
+        
+        mComboCommand = makeComboBox(listOfcommand,2);
+        pair = makePair(mComboCommand,mButtonExecCommand);
+        add(pair);
+        
+        mDataToSend = makeTextInput("");
+        pair = makePair(makeLabel("param "), mDataToSend);
+        add(pair);
+        
+        mResultCommand = makeTextArea("",50,150);
+        pair = makePair(makeLabel("result"), new JScrollPane(mResultCommand));
+        add(pair);
+            	
         updateState();
         
         setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
@@ -120,19 +144,15 @@ class RemoteController extends Container implements Commands, ActionListener {
             int port = mPortModel.getNumber().intValue();
     	    DataSocket rd = sendReceive(GETXMLDUMP,hostname, port);
     	    if (rd==null) {
-    	    	 String msg = ("Trouble sending '" + GETXMLDUMP + "' to " + hostname +":" + port + "\n");
-                  String title = "error";
-                  JOptionPane.showMessageDialog(null, msg, title,
-                                         JOptionPane.ERROR_MESSAGE);
+    	    	  String msg = ("Trouble sending '" + GETXMLDUMP + "' to " + hostname +":" + port + "\n");
+    	    	  printError(msg);
         		 return;
         	}
     	    if (rd.getData().length == 0) {
    	    	 String msg = ("No data from command '" + GETXMLDUMP 
    	    			       + "' to " + hostname +":" + port + "\n"
    	    			       +" "+rd.getCommand());
-                 String title = "error";
-                 JOptionPane.showMessageDialog(null, msg, title,
-                                        JOptionPane.ERROR_MESSAGE);
+             printError(msg);
        		 return;
        	    } 
     	    
@@ -162,33 +182,93 @@ class RemoteController extends Container implements Commands, ActionListener {
         	 newJipViewer();
         	return;
         }
+        
+        if (cmd.equals("exec")) {
+            execRemoteCommand();
+        	return;
+        }        
         throw new RuntimeException("unexpected button cmd ("+cmd+")");
+    }
+    
+    void execRemoteCommand() {
+    	 String hostname = mHostname.getText();
+         int port = mPortModel.getNumber().intValue();
+    	 String command = (String) mComboCommand.getSelectedItem();
+    	 String param = mDataToSend.getText();
+    	 if (param!=null) {
+    		 param = param.trim();
+    		 if (param.length()==0) {
+    			 param=null;
+    		 }
+    	 }
+    	
+    	 try {    	  	 
+    		   DataSocket dataSocket = new DataSocket();	   
+ 		       if (START.equals(command) || FINISH.equals(command) 
+ 			       || DEBUGON.equals(command) || DEBUGOFF.equals(command)
+ 			       || CLEAR.equals(command)) {
+ 			       dataSocket.send(command,null, hostname, port);
+ 			       return;
+ 		       } 
+ 		       if (GETXMLDUMP.equals(command)) {
+ 	               dataSocket.sendReceive(GETXMLDUMP,null, hostname, port);
+ 	              if (dataSocket.getData()!=null) {
+ 	            	  mResultCommand.setText(new String(dataSocket.getData(),"UTF-8"));
+ 	              }
+ 	              return;
+ 		       }
+ 		       if (STATUS.equals(command)) {
+ 	               dataSocket.sendReceive(STATUS,null, hostname, port);
+ 	               if (dataSocket.getData()!=null) {
+ 	                  mResultCommand.setText(new String(dataSocket.getData()));
+ 	                  updateState();
+ 	               }
+ 	               return;
+ 		       } 
+ 		       if ((GETCLASSLOADERSBYNAME.equals(command) ||
+ 		         GETINCLUDELIST.equals(command) ||
+ 		         GETEXCLUDELIST.equals(command))) {
+ 	             dataSocket.sendReceive(command,null, hostname,port);
+ 	             if (dataSocket.getData()!=null) {
+ 	               mResultCommand.setText(new String(dataSocket.getData()));
+ 	             }
+ 	             return;
+ 		       } 
+ 		       if ((REPLACEEXCLUDELIST.equals(command) || 
+ 			       REPLACEINCLUDELIST.equals(command) || 
+ 			       REPLACECLASSLOADERSBYNAME.equals(command) ||
+ 			       FILE.equals(command) ) && param!=null) {
+ 			       dataSocket.send(command, param.getBytes(), hostname, port);
+ 		           return;
+ 		       }	
+    	 } catch (IOException e) {
+    		 printConnexionError(command, hostname, port, e);
+    	 }		 
     }
 
     void startProfiler() {
-        String hostname = mHostname.getText();
+    	stProfiler(START);
+    }
+    
+    void stopProfiler() {
+        stProfiler(FINISH);
+    }
+    
+    void stProfiler (String command) {
+    	String hostname = mHostname.getText();
         int port = mPortModel.getNumber().intValue();
-        if (send(START, hostname, port)) {
-        	try {
-				Thread.sleep(1000);
-			} catch (InterruptedException e) {
-				// do Nothing;
-			}
+        if (send(command, hostname, port)) {
+        	sleepTimeMs(1000);
             updateState();
         }
     }
     
-    void stopProfiler() {
-        String hostname = mHostname.getText();
-        int port = mPortModel.getNumber().intValue();
-        if (send(FINISH, hostname, port)) {
-        	try {
-				Thread.sleep(1000);
-			} catch (InterruptedException e) {
-				// do Nothing;
-			}
-            updateState();
-        }
+    void sleepTimeMs(long ms) {
+    	try {
+			Thread.sleep(ms);
+		} catch (InterruptedException e) {
+			// do Nothing;
+		}
     }
 
     /**
@@ -202,11 +282,7 @@ class RemoteController extends Container implements Commands, ActionListener {
             dataSocket.send(command, null, server, port);
             return true;
         } catch (IOException e) {
-            String msg = ("Trouble sending '" + command + "' to " + server +
-                          ":" + port + ":\n" + e +"\n");
-            String title = "error";
-            JOptionPane.showMessageDialog(null, msg, title,
-                                          JOptionPane.ERROR_MESSAGE);
+            printConnexionError(command, server, port, e);
             return false;
         }
     }
@@ -219,6 +295,17 @@ class RemoteController extends Container implements Commands, ActionListener {
           } catch (IOException e) {
               return null;
           } 
+    }
+    
+    private static void printConnexionError(String command, String server, int port, Exception e) {
+    	String msg = ("Trouble sending '" + command + "' to " + server +
+                ":" + port + ":\n" + e +"\n");
+        printError(msg);
+    }
+    
+    private static void printError(String msg) {
+    	String title = "error";
+        JOptionPane.showMessageDialog(null, msg, title,JOptionPane.ERROR_MESSAGE);
     }
     
     private Container makePair(Component left, Component right) {
@@ -251,6 +338,12 @@ class RemoteController extends Container implements Commands, ActionListener {
         JLabel label = new JLabel(text);
         return label;
     }
+    
+    private JComboBox makeComboBox (String listOfcommand[], int pos) {
+    	JComboBox comboBox = new JComboBox(listOfcommand);
+        comboBox.setSelectedIndex(pos);
+        return comboBox;
+    }
 
     private JTextField makeTextInput(String text) {
         JTextField field = new JTextField(text);
@@ -260,6 +353,12 @@ class RemoteController extends Container implements Commands, ActionListener {
     private JTextField makeTextOutput(String text) {
         JTextField field = new JTextField(text);
         field.setEditable(false);
+        return field;
+    }
+    
+    private JTextArea makeTextArea(String text, int rows, int columns) {
+        JTextArea field = new JTextArea(text,rows,columns);
+        field.setEditable(false);   
         return field;
     }
 }
