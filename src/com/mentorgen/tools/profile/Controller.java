@@ -357,7 +357,7 @@ ClassLoaderFilter.2=com.mentorgen.tools.profile.instrument.classfilter.StandardC
  */
 public class Controller {
 	
-	private static final String ProfilerVersion="1.4.1 2014-07-08";
+	private static final String ProfilerVersion="1.4.2 2015-06-03";
 	
 	/*
 	 * Default configuration
